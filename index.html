@@ -3,68 +3,126 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>合言葉つきじゃんけん</title>
+  <title>合言葉対戦じゃんけん</title>
   <style>
     body { font-family: sans-serif; text-align: center; padding: 20px; }
     .hidden { display: none; }
     button { font-size: 1.2rem; margin: 10px; padding: 10px 20px; cursor: pointer; }
+    .status { margin-top: 15px; font-size: 1.1rem; color: #555; }
     .result { font-size: 1.5rem; font-weight: bold; margin-top: 20px; }
   </style>
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
 </head>
 <body>
 
-  <h1>合言葉じゃんけん</h1>
+  <h1>合言葉対戦じゃんけん</h1>
 
-  <!-- 1. 合言葉の入力画面 -->
-  <div id="auth-section">
-    <p>合言葉を入力してください:</p>
-    <input type="password" id="pass-input" placeholder="合言葉">
-    <button onclick="checkPass()">送信</button>
-    <p id="auth-msg" style="color:red;"></p>
+  <!-- 1. 入力画面 -->
+  <div id="room-section">
+    <p>合言葉（ルーム名）を入力してください:</p>
+    <input type="text" id="room-input" placeholder="例: secret123">
+    <br><br>
+    <button onclick="joinRoom('p1')">1人目として入室</button>
+    <button onclick="joinRoom('p2')">2人目として入室</button>
   </div>
 
-  <!-- 2. じゃんけんゲーム画面 -->
+  <!-- 2. 対戦画面 -->
   <div id="game-section" class="hidden">
-    <p>手を選んでください：</p>
-    <button onclick="play(0)">✊ グー</button>
-    <button onclick="play(1)">✌️ チョキ</button>
-    <button onclick="play(2)">✋ パー</button>
+    <h2 id="role-title"></h2>
+    <p id="status-msg" class="status">手をえらんでください</p>
+
+    <div id="hand-buttons">
+      <button onclick="selectHand(0)">✊ グー</button>
+      <button onclick="selectHand(1)">✌️ チョキ</button>
+      <button onclick="selectHand(2)">✋ パー</button>
+    </div>
 
     <div class="result" id="result-text"></div>
+    <button id="reset-btn" class="hidden" onclick="resetGame()">もう一度遊ぶ</button>
   </div>
 
   <script>
-    const SECRET_PASS = "1234"; // ← ここで合言葉を変更できます
+    // ⚠️ Firebase設定情報をここに貼り付けます
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+      databaseURL: "https://YOUR_PROJECT_ID-default-rtdb.firebaseio.com",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_PROJECT_ID.appspot.com",
+      messagingSenderId: "YOUR_SENDER_ID",
+      appId: "YOUR_APP_ID"
+    };
 
-    function checkPass() {
-      const input = document.getElementById("pass-input").value;
-      if (input === SECRET_PASS) {
-        document.getElementById("auth-section").classList.add("hidden");
-        document.getElementById("game-section").classList.remove("hidden");
-      } else {
-        document.getElementById("auth-msg").innerText = "合言葉が違います！";
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    let roomId = "";
+    let playerRole = ""; // 'p1' または 'p2'
+    let roomRef = null;
+
+    function joinRoom(role) {
+      const input = document.getElementById("room-input").value.trim();
+      if (!input) {
+        alert("合言葉を入力してください");
+        return;
       }
+      roomId = input;
+      playerRole = role;
+      roomRef = db.ref("rooms/" + roomId);
+
+      document.getElementById("room-section").classList.add("hidden");
+      document.getElementById("game-section").classList.remove("hidden");
+      document.getElementById("role-title").innerText = `あなたは ${role === 'p1' ? '1人目' : '2人目'} です（部屋: ${roomId}）`;
+
+      // 状態変更を監視
+      roomRef.on("value", (snapshot) => {
+        const data = snapshot.val();
+        if (!data) return;
+
+        // 両者の手が揃ったら判定
+        if (data.p1 !== undefined && data.p2 !== undefined) {
+          judge(data.p1, data.p2);
+        } else if (data[playerRole] !== undefined) {
+          document.getElementById("status-msg").innerText = "相手の手を待っています...";
+        }
+      });
     }
 
-    function play(playerHand) {
-      const hands = ["グー", "チョキ", "パー"];
-      const cpuHand = Math.floor(Math.random() * 3);
+    function selectHand(hand) {
+      if (!roomRef) return;
+      roomRef.child(playerRole).set(hand);
+      document.getElementById("hand-buttons").classList.add("hidden");
+    }
 
-      let resultMsg = "";
-      if (playerHand === cpuHand) {
-        resultMsg = "引き分け！";
-      } else if ((playerHand === 0 && cpuHand === 1) || 
-                 (playerHand === 1 && cpuHand === 2) || 
-                 (playerHand === 2 && cpuHand === 0)) {
-        resultMsg = "あなたの勝ち！🎉";
+    function judge(p1Hand, p2Hand) {
+      const hands = ["グー", "チョキ", "パー"];
+      let result = "";
+
+      if (p1Hand === p2Hand) {
+        result = "引き分け！";
+      } else if ((p1Hand === 0 && p2Hand === 1) || (p1Hand === 1 && p2Hand === 2) || (p1Hand === 2 && p2Hand === 0)) {
+        result = "1人目の勝ち！";
       } else {
-        resultMsg = "あなたの負け…🤖";
+        result = "2人目の勝ち！";
       }
 
+      document.getElementById("status-msg").innerText = "対戦完了！";
       document.getElementById("result-text").innerHTML = 
-        `あなた: ${hands[playerHand]}<br>` +
-        `相手: ${hands[cpuHand]}<br><br>` +
-        `<strong>${resultMsg}</strong>`;
+        `1人目: ${hands[p1Hand]}<br>` +
+        `2人目: ${hands[p2Hand]}<br><br>` +
+        `<strong>${result}</strong>`;
+
+      document.getElementById("reset-btn").classList.remove("hidden");
+    }
+
+    function resetGame() {
+      roomRef.remove();
+      document.getElementById("hand-buttons").classList.remove("hidden");
+      document.getElementById("reset-btn").classList.add("hidden");
+      document.getElementById("result-text").innerText = "";
+      document.getElementById("status-msg").innerText = "手をえらんでください";
     }
   </script>
 
