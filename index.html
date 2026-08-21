@@ -61,33 +61,36 @@
     let playerRole = ""; // 'p1' または 'p2'
     let roomRef = null;
 
-    function joinRoom(role) {
-      const input = document.getElementById("room-input").value.trim();
-      if (!input) {
-        alert("合言葉を入力してください");
-        return;
-      }
-      roomId = input;
-      playerRole = role;
-      roomRef = db.ref("rooms/" + roomId);
+function joinRoom(role) {
+  const input = document.getElementById("room-input").value.trim();
+  if (!input) {
+    alert("合言葉を入力してください");
+    return;
+  }
+  roomId = input;
+  playerRole = role;
+  roomRef = db.ref("rooms/" + roomId);
 
-      document.getElementById("room-section").classList.add("hidden");
-      document.getElementById("game-section").classList.remove("hidden");
-      document.getElementById("role-title").innerText = `あなたは ${role === 'p1' ? '1人目' : '2人目'} です（部屋: ${roomId}）`;
+  document.getElementById("room-section").classList.add("hidden");
+  document.getElementById("game-section").classList.remove("hidden");
+  document.getElementById("role-title").innerText = `あなたは ${role === 'p1' ? '1人目' : '2人目'} です（部屋: ${roomId}）`;
 
-      // 状態変更を監視
-      roomRef.on("value", (snapshot) => {
-        const data = snapshot.val();
-        if (!data) return;
+  // 状態変更を監視
+  roomRef.on("value", (snapshot) => {
+    const data = snapshot.val();
+    if (!data) return;
 
-        // 両者の手が揃ったら判定
-        if (data.p1 !== undefined && data.p2 !== undefined) {
-          judge(data.p1, data.p2);
-        } else if (data[playerRole] !== undefined) {
-          document.getElementById("status-msg").innerText = "相手の手を待っています...";
-        }
-      });
+    // 0（グー）も正しく判定できるように `hasOwnerProperty` で確認する
+    const hasP1 = Object.prototype.hasOwnProperty.call(data, 'p1');
+    const hasP2 = Object.prototype.hasOwnProperty.call(data, 'p2');
+
+    if (hasP1 && hasP2) {
+      judge(data.p1, data.p2);
+    } else if (Object.prototype.hasOwnProperty.call(data, playerRole)) {
+      document.getElementById("status-msg").innerText = "相手の手を待っています...";
     }
+  });
+}
 
     function selectHand(hand) {
       if (!roomRef) return;
