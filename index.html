@@ -1,44 +1,72 @@
-
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>テスト</title>
-    <style>
-        body {
-            font-family: sans-serif;
-            line-height: 1.6;
-            margin: 0 auto;
-            max-width: 800px;
-            padding: 20px;
-            background-color: #f9f9f9;
-        }
-        .profile-card {
-            background-color: white;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-            text-align: center;
-        }
-        h1 {
-            color: #333;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>合言葉つきじゃんけん</title>
+  <style>
+    body { font-family: sans-serif; text-align: center; padding: 20px; }
+    .hidden { display: none; }
+    button { font-size: 1.2rem; margin: 10px; padding: 10px 20px; cursor: pointer; }
+    .result { font-size: 1.5rem; font-weight: bold; margin-top: 20px; }
+  </style>
 </head>
 <body>
-    <div class="profile-card">
-        <h1>テスト　てすお</h1>
-        <p>こんにちは！私の自己紹介ページへようこそ。</p>
-        
-        <h2>趣味</h2>
-        <p>テスト</p>
-        
-        <h2>スキル</h2>
-        <p>テスト</p>
-        
-        <h2>リンク</h2>
-        <p><a href="https://github.com/あなたのユーザー名">テスト</a></p>
-    </div>
+
+  <h1>合言葉じゃんけん</h1>
+
+  <!-- 1. 合言葉の入力画面 -->
+  <div id="auth-section">
+    <p>合言葉を入力してください:</p>
+    <input type="password" id="pass-input" placeholder="合言葉">
+    <button onclick="checkPass()">送信</button>
+    <p id="auth-msg" style="color:red;"></p>
+  </div>
+
+  <!-- 2. じゃんけんゲーム画面 -->
+  <div id="game-section" class="hidden">
+    <p>手を選んでください：</p>
+    <button onclick="play(0)">✊ グー</button>
+    <button onclick="play(1)">✌️ チョキ</button>
+    <button onclick="play(2)">✋ パー</button>
+
+    <div class="result" id="result-text"></div>
+  </div>
+
+  <script>
+    const SECRET_PASS = "1234"; // ← ここで合言葉を変更できます
+
+    function checkPass() {
+      const input = document.getElementById("pass-input").value;
+      if (input === SECRET_PASS) {
+        document.getElementById("auth-section").classList.add("hidden");
+        document.getElementById("game-section").classList.remove("hidden");
+      } else {
+        document.getElementById("auth-msg").innerText = "合言葉が違います！";
+      }
+    }
+
+    function play(playerHand) {
+      const hands = ["グー", "チョキ", "パー"];
+      const cpuHand = Math.floor(Math.random() * 3);
+
+      let resultMsg = "";
+      if (playerHand === cpuHand) {
+        resultMsg = "引き分け！";
+      } else if ((playerHand === 0 && cpuHand === 1) || 
+                 (playerHand === 1 && cpuHand === 2) || 
+                 (playerHand === 2 && cpuHand === 0)) {
+        resultMsg = "あなたの勝ち！🎉";
+      } else {
+        resultMsg = "あなたの負け…🤖";
+      }
+
+      document.getElementById("result-text").innerHTML = 
+        `あなた: ${hands[playerHand]}<br>` +
+        `相手: ${hands[cpuHand]}<br><br>` +
+        `<strong>${resultMsg}</strong>`;
+    }
+  </script>
+
 </body>
 </html>
